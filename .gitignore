@@ -1,0 +1,10 @@
+# Binários compilados
+*.exe
+__debug_bin*
+server.exe
+
+# Configuração local do editor (opcional - alguns times versionam, outros não)
+.vscode/
+
+# Variáveis de ambiente / segredos (vamos usar isso quando conectar no banco)
+.env
