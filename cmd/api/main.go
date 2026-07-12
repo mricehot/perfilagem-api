@@ -7,20 +7,21 @@ import (
 	"net/http"
 
 	"perfilagem-api/internal/models"
+	"perfilagem-api/internal/service"
 	"perfilagem-api/internal/store"
-
-	"github.com/google/uuid"
 )
 
 func main() {
 	mux := http.NewServeMux()
 	anelStore := store.NewAnelStore()
+	anelService := service.NewAnelService(anelStore)
 
 	mux.HandleFunc("/health", handlerHealth)
-	mux.HandleFunc("GET /aneis/{id}", handlerBuscarAnel(anelStore))
-	mux.HandleFunc("POST /aneis", handlerCriarAnel(anelStore))
-	mux.HandleFunc("GET /aneis", handlerListarAneis(anelStore))
-	mux.HandleFunc("PUT /aneis/{id}", handlerAtualizarAnel(anelStore))
+	mux.HandleFunc("GET /aneis/{id}", handlerBuscarAnel(anelService))
+	mux.HandleFunc("POST /aneis", handlerCriarAnel(anelService))
+	mux.HandleFunc("GET /aneis", handlerListarAneis(anelService))
+	mux.HandleFunc("PUT /aneis/{id}", handlerAtualizarAnel(anelService))
+	mux.HandleFunc("DELETE /aneis/{id}", handlerDeletarAnel(anelService))
 
 	log.Println("Servidor rodando na porta 8080")
 	err := http.ListenAndServe(":8080", mux)
@@ -35,7 +36,7 @@ func handlerHealth(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func handlerBuscarAnel(s *store.AnelStore) http.HandlerFunc {
+func handlerBuscarAnel(s *service.AnelService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
 
@@ -49,7 +50,7 @@ func handlerBuscarAnel(s *store.AnelStore) http.HandlerFunc {
 		json.NewEncoder(w).Encode(anel)
 	}
 }
-func handlerCriarAnel(store *store.AnelStore) http.HandlerFunc {
+func handlerCriarAnel(s *service.AnelService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var anel models.Anel
 
@@ -58,9 +59,16 @@ func handlerCriarAnel(store *store.AnelStore) http.HandlerFunc {
 			http.Error(w, "JSON inválido", http.StatusBadRequest)
 			return
 		}
-		anel.ID = uuid.NewString() // Função fictícia para gerar um ID único
-		anel.Ativo = true
-		store.Criar(anel)
+
+		anel, err = s.Criar(anel)
+		if err != nil {
+			if err == service.ErrNomeObrigatorio || err == service.ErrNomeDuplicado {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, "Erro interno", http.StatusInternalServerError)
+			return
+		}
 
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
@@ -70,7 +78,7 @@ func handlerCriarAnel(store *store.AnelStore) http.HandlerFunc {
 	}
 }
 
-func handlerListarAneis(s *store.AnelStore) http.HandlerFunc {
+func handlerListarAneis(s *service.AnelService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1. Chama s.ListarTodos() e guarda o resultado numa variável (ex: "aneis")
 		aneis := s.ListarTodos()
@@ -82,7 +90,7 @@ func handlerListarAneis(s *store.AnelStore) http.HandlerFunc {
 	}
 }
 
-func handlerAtualizarAnel(s *store.AnelStore) http.HandlerFunc {
+func handlerAtualizarAnel(s *service.AnelService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// 1. pega o id da URL (você já sabe fazer isso)
 		id := r.PathValue("id")
@@ -93,16 +101,35 @@ func handlerAtualizarAnel(s *store.AnelStore) http.HandlerFunc {
 			http.Error(w, "JSON inválido", http.StatusBadRequest)
 			return
 		}
-		// 3. chama s.Atualizar(id, dadosNovos) - guarda o bool retornado
-		anelAtualizado, atualizado := s.Atualizar(id, dadosNovos)
-		// 4. se não existir, responde 404 (você já sabe fazer isso)
-		if !atualizado {
-			http.Error(w, "Anel não encontrado", http.StatusNotFound)
+
+		// 3. chama s.AtualizarAtivo(id, dadosNovos) - guarda o bool retornado
+		anelAtualizado, err := s.Atualizar(id, dadosNovos)
+		if err != nil {
+			if err == service.ErrNomeNaoEncontrado {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if err == service.ErrNomeObrigatorio || err == service.ErrNomeDuplicado {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+			http.Error(w, "Erro interno", http.StatusInternalServerError)
 			return
 		}
 
 		// 5. se existir, responde 200 (padrão, não precisa WriteHeader) com o anel atualizado
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(anelAtualizado)
+	}
+}
+func handlerDeletarAnel(s *service.AnelService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		deletado := s.Remover(id)
+		if !deletado {
+			http.Error(w, "Anel não encontrado", http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 }

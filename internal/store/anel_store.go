@@ -66,7 +66,7 @@ func (s *AnelStore) ListarTodos() []models.Anel {
 }
 
 // Atualizar substitui os dados de um anel existente. Retorna false se o ID não existir.
-func (s *AnelStore) Atualizar(id string, dadosNovos models.Anel) (models.Anel, bool) {
+func (s *AnelStore) AtualizarAtivo(id string, dadosNovos models.Anel) (models.Anel, bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	// pensa: antes de sobrescrever, você precisa checar se esse ID já existe no map.
@@ -81,4 +81,15 @@ func (s *AnelStore) Atualizar(id string, dadosNovos models.Anel) (models.Anel, b
 	dadosNovos.ID = id
 	s.dados[id] = dadosNovos
 	return dadosNovos, true
+}
+
+func (s *AnelStore) Remover(id string) bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	_, encontrado := s.dados[id]
+	if !encontrado {
+		return false
+	}
+	delete(s.dados, id)
+	return true
 }
