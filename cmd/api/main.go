@@ -6,12 +6,29 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/joho/godotenv"
+
+	"perfilagem-api/internal/db"
 	"perfilagem-api/internal/models"
 	"perfilagem-api/internal/service"
 	"perfilagem-api/internal/store"
 )
 
 func main() {
+
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Erro ao carregar arquivo .env")
+	}
+
+	pool, err := db.Conectar()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer pool.Close()
+	log.Println("Conexão com o banco de dados estabelecida com sucesso!")
+
 	mux := http.NewServeMux()
 	anelStore := store.NewAnelStore()
 	anelService := service.NewAnelService(anelStore)
@@ -24,7 +41,7 @@ func main() {
 	mux.HandleFunc("DELETE /aneis/{id}", handlerDeletarAnel(anelService))
 
 	log.Println("Servidor rodando na porta 8080")
-	err := http.ListenAndServe(":8080", mux)
+	err = http.ListenAndServe(":8080", mux)
 	if err != nil {
 		log.Fatal(err)
 	}
