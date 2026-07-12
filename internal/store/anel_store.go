@@ -42,3 +42,43 @@ func (s *AnelStore) BuscarPorID(id string) (models.Anel, bool) {
 	// 4. Retorna os dois: return anel, encontrado
 	return anel, encontrado
 }
+
+// ListarTodos devolve todos os anéis guardados, sem ordem garantida
+func (s *AnelStore) ListarTodos() []models.Anel {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	// 1. Declara um slice vazio: var lista []models.Anel
+	var lista []models.Anel
+
+	// 2. Usa "range" pra percorrer s.dados (que é um map[string]models.Anel)
+	//    Lembre: range num map devolve (chave, valor) a cada volta.
+	for _, anel := range s.dados {
+		lista = append(lista, anel)
+	}
+	//    Você só precisa do valor aqui, pode ignorar a chave usando "_"
+	//    for _, anel := range s.dados { ... }
+
+	// 3. Dentro do for, adiciona cada anel na lista: lista = append(lista, anel)
+
+	// 4. Depois do for, retorna a lista: return lista
+	return lista
+}
+
+// Atualizar substitui os dados de um anel existente. Retorna false se o ID não existir.
+func (s *AnelStore) Atualizar(id string, dadosNovos models.Anel) (models.Anel, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// pensa: antes de sobrescrever, você precisa checar se esse ID já existe no map.
+	_, encontrado := s.dados[id]
+	if !encontrado {
+		return models.Anel{}, false
+	}
+
+	// se não existir, devolve false sem alterar nada.
+	// se existir, você precisa manter o ID original (dadosNovos pode não ter vindo com ID preenchido),
+	// sobrescrever no map, e devolver true.
+	dadosNovos.ID = id
+	s.dados[id] = dadosNovos
+	return dadosNovos, true
+}
