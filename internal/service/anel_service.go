@@ -27,7 +27,10 @@ func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 	if anel.Nome == "" {
 		return models.Anel{}, ErrNomeObrigatorio
 	}
-	todos := s.store.ListarTodos()
+	todos, err := s.store.ListarTodos()
+	if err != nil {
+		return models.Anel{}, err
+	}
 	for _, existente := range todos {
 		if strings.EqualFold(existente.Nome, anel.Nome) {
 			return models.Anel{}, ErrNomeDuplicado
@@ -36,7 +39,11 @@ func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 
 	anel.ID = uuid.NewString() // Função fictícia para gerar um ID único
 	anel.Ativo = true
-	s.store.Criar(anel)
+
+	if err := s.store.Criar(anel); err != nil {
+		return models.Anel{}, err
+	}
+
 	return anel, nil
 }
 
@@ -44,8 +51,12 @@ func (s *AnelService) Remover(id string) bool {
 	return s.store.Remover(id)
 }
 
-func (s *AnelService) ListarTodos() []models.Anel {
-	return s.store.ListarTodos()
+func (s *AnelService) ListarTodos() ([]models.Anel, error) {
+	todos, err := s.store.ListarTodos()
+	if err != nil {
+		return []models.Anel{}, err
+	}
+	return todos, nil
 }
 
 func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel, error) {
@@ -54,7 +65,10 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 	}
 
 	// Verifica se o nome já existe em outro anel
-	todos := s.store.ListarTodos()
+	todos, err := s.store.ListarTodos()
+	if err != nil {
+		return models.Anel{}, err
+	}
 	for _, existente := range todos {
 		if strings.EqualFold(existente.Nome, dadosNovos.Nome) && existente.ID != id {
 			return models.Anel{}, ErrNomeDuplicado
