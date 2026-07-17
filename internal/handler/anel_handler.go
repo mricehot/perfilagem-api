@@ -84,10 +84,11 @@ func HandlerAtualizarAnel(s *service.AnelService) http.HandlerFunc {
 				http.Error(w, err.Error(), http.StatusNotFound)
 				return
 			}
-			if err == service.ErrNomeObrigatorio || err == service.ErrNomeDuplicado {
+			if err == service.ErrNomeObrigatorio || err == service.ErrNomeDuplicado || err == service.ErrPrecisaTerAnelAtivo {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
+
 			http.Error(w, "Erro interno", http.StatusInternalServerError)
 			return
 		}

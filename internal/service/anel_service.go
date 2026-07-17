@@ -10,9 +10,10 @@ import (
 )
 
 var (
-	ErrNomeObrigatorio   = errors.New("O nome do anel é obrigatório")
-	ErrNomeDuplicado     = errors.New("Já existe um anel com esse nome")
-	ErrNomeNaoEncontrado = errors.New("Anel não encontrado")
+	ErrNomeObrigatorio     = errors.New("O nome do anel é obrigatório")
+	ErrNomeDuplicado       = errors.New("Já existe um anel com esse nome")
+	ErrNomeNaoEncontrado   = errors.New("Anel não encontrado")
+	ErrPrecisaTerAnelAtivo = errors.New("não é possível desativar o único anel ativo")
 )
 
 type AnelService struct {
@@ -31,10 +32,15 @@ func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 	if err != nil {
 		return models.Anel{}, err
 	}
+
 	for _, existente := range todos {
 		if strings.EqualFold(existente.Nome, anel.Nome) {
 			return models.Anel{}, ErrNomeDuplicado
 		}
+	}
+	err = s.store.DesativarTodos() // Desativa todos os anéis existentes antes de criar um novo
+	if err != nil {
+		return models.Anel{}, err
 	}
 
 	anel.ID = uuid.NewString() // Função fictícia para gerar um ID único
@@ -75,10 +81,29 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 		}
 	}
 
+	anelAtual, encontrado := s.store.BuscarPorID(id)
+	if !encontrado {
+		return models.Anel{}, ErrNomeNaoEncontrado
+	}
+
+	if anelAtual.Ativo && !dadosNovos.Ativo {
+		return models.Anel{}, ErrPrecisaTerAnelAtivo
+	}
+
+	if dadosNovos.Ativo {
+		// Desativa todos os outros aneis antes de ativar o novo
+		err := s.store.DesativarTodos()
+		if err != nil {
+			return models.Anel{}, err
+		}
+
+	}
+
 	anel, encontrado := s.store.AtualizarAtivo(id, dadosNovos)
 	if !encontrado {
 		return models.Anel{}, ErrNomeNaoEncontrado
 	}
+
 	return anel, nil
 }
 

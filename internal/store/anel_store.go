@@ -80,3 +80,13 @@ func (s *AnelStore) Remover(id string) bool {
 	}
 	return true
 }
+
+func (s *AnelStore) DesativarTodos() error {
+
+	err := s.db.Model(&models.Anel{}).Where("ativo = ?", true).Update("ativo", false).Error
+	if err != nil {
+		return fmt.Errorf("erro ao desativar todos os anéis: %w", err)
+	}
+
+	return nil
+}
