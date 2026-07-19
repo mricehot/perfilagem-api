@@ -12,4 +12,6 @@ func RegistrarRotasLeque(mux *http.ServeMux, s *service.LequeService) {
 	mux.HandleFunc("GET /leques/anel/{anelID}", handler.HandlerListarLequesPorAnel(s))
 	mux.HandleFunc("PUT /leques/{id}", handler.HandlerAtualizarLeque(s))
 	mux.HandleFunc("DELETE /leques/{id}", handler.HandlerDeletarLeque(s))
+	mux.HandleFunc("PATCH /leques/{id}/finalizar", handler.HandlerFinalizarLeque(s))
+	mux.HandleFunc("PATCH /leques/{id}/reabrir", handler.HandlerReabrirLeque(s))
 }

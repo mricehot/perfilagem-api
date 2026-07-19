@@ -82,6 +82,55 @@ func HandlerAtualizarLeque(s *service.LequeService) http.HandlerFunc {
 func HandlerDeletarLeque(s *service.LequeService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Implementação do handler para deletar um leque
+		id := r.PathValue("id")
+		removido := s.Remover(id)
+		if !removido {
+			http.Error(w, "Leque não encontrado", http.StatusNotFound)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
 	}
 
+}
+
+func HandlerFinalizarLeque(s *service.LequeService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		leque, err := s.Finalizar(id)
+		if err != nil {
+			if err == service.ErrNumeroNaoEncontrado {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			http.Error(w, "Erro interno", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(leque)
+	}
+}
+
+func HandlerReabrirLeque(s *service.LequeService) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+
+		leque, err := s.Reabrir(id)
+		if err != nil {
+			if err == service.ErrNumeroNaoEncontrado || err == service.ErrAnelNaoEncontrado {
+				http.Error(w, err.Error(), http.StatusNotFound)
+				return
+			}
+			if err == service.ErrLequeAbertoExiste {
+				http.Error(w, err.Error(), http.StatusConflict)
+				return
+			}
+			http.Error(w, "Erro interno", http.StatusInternalServerError)
+			return
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(leque)
+	}
 }

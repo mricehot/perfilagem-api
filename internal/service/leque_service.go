@@ -87,9 +87,15 @@ func (s *LequeService) Finalizar(id string) (models.Leque, error) {
 	// se não encontrado, devolve ErrLequeNaoEncontrado
 }
 
-func (s *LequeService) Reabrir(anelID string, id string) (models.Leque, error) {
+func (s *LequeService) Reabrir(id string) (models.Leque, error) {
 	// aqui tem uma regra interessante: antes de reabrir esse leque,
 	// você precisa checar se já existe outro leque ABERTO nesse mesmo anel.
+	leque, encontrado := s.store.BuscarPorID(id)
+	if !encontrado {
+		return models.Leque{}, ErrNumeroNaoEncontrado
+	}
+	anelID := leque.AnelID
+
 	_, anelEncontrado := s.anel.BuscarPorID(anelID)
 	if !anelEncontrado {
 		return models.Leque{}, ErrAnelNaoEncontrado
@@ -103,10 +109,6 @@ func (s *LequeService) Reabrir(anelID string, id string) (models.Leque, error) {
 		if leque.Status == "aberto" && leque.ID != id {
 			return models.Leque{}, ErrLequeAbertoExiste
 		}
-	}
-	_, encontrado := s.store.BuscarPorID(id)
-	if !encontrado {
-		return models.Leque{}, ErrNumeroNaoEncontrado
 	}
 
 	lequeAtualizado, _ := s.store.AtualizarStatus(id, "aberto")
