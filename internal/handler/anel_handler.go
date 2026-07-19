@@ -101,9 +101,17 @@ func HandlerAtualizarAnel(s *service.AnelService) http.HandlerFunc {
 func HandlerDeletarAnel(s *service.AnelService) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")
-		deletado := s.Remover(id)
-		if !deletado {
-			http.Error(w, "Anel não encontrado", http.StatusNotFound)
+		err := s.Remover(id)
+		if err != nil {
+			if err == service.ErrNomeNaoEncontrado {
+				http.Error(w, "Anel não encontrado", http.StatusNotFound)
+				return
+			}
+			if err == service.ErrLequeAbertoNoAnel {
+				http.Error(w, "Não é possível remover o anel, pois existem leques abertos associados a ele", http.StatusConflict)
+				return
+			}
+			http.Error(w, "Erro interno", http.StatusInternalServerError)
 			return
 		}
 		w.WriteHeader(http.StatusNoContent)

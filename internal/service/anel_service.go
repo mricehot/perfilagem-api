@@ -14,21 +14,23 @@ var (
 	ErrNomeDuplicado       = errors.New("Já existe um anel com esse nome")
 	ErrNomeNaoEncontrado   = errors.New("Anel não encontrado")
 	ErrPrecisaTerAnelAtivo = errors.New("não é possível desativar o único anel ativo")
+	ErrLequeAbertoNoAnel   = errors.New("Não é possível desativar o anel, pois existem leques abertos associados a ele")
 )
 
 type AnelService struct {
-	store *store.AnelStore
+	anelStore  *store.AnelStore
+	lequeStore *store.LequeStore
 }
 
-func NewAnelService(store *store.AnelStore) *AnelService {
-	return &AnelService{store: store}
+func NewAnelService(anelStore *store.AnelStore, lequeStore *store.LequeStore) *AnelService {
+	return &AnelService{anelStore: anelStore, lequeStore: lequeStore}
 }
 
 func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 	if anel.Nome == "" {
 		return models.Anel{}, ErrNomeObrigatorio
 	}
-	todos, err := s.store.ListarTodos()
+	todos, err := s.anelStore.ListarTodos()
 	if err != nil {
 		return models.Anel{}, err
 	}
@@ -38,7 +40,7 @@ func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 			return models.Anel{}, ErrNomeDuplicado
 		}
 	}
-	err = s.store.DesativarTodos() // Desativa todos os anéis existentes antes de criar um novo
+	err = s.anelStore.DesativarTodos() // Desativa todos os anéis existentes antes de criar um novo
 	if err != nil {
 		return models.Anel{}, err
 	}
@@ -46,19 +48,15 @@ func (s *AnelService) Criar(anel models.Anel) (models.Anel, error) {
 	anel.ID = uuid.NewString() // Função fictícia para gerar um ID único
 	anel.Ativo = true
 
-	if err := s.store.Criar(anel); err != nil {
+	if err := s.anelStore.Criar(anel); err != nil {
 		return models.Anel{}, err
 	}
 
 	return anel, nil
 }
 
-func (s *AnelService) Remover(id string) bool {
-	return s.store.Remover(id)
-}
-
 func (s *AnelService) ListarTodos() ([]models.Anel, error) {
-	todos, err := s.store.ListarTodos()
+	todos, err := s.anelStore.ListarTodos()
 	if err != nil {
 		return []models.Anel{}, err
 	}
@@ -71,7 +69,7 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 	}
 
 	// Verifica se o nome já existe em outro anel
-	todos, err := s.store.ListarTodos()
+	todos, err := s.anelStore.ListarTodos()
 	if err != nil {
 		return models.Anel{}, err
 	}
@@ -81,7 +79,7 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 		}
 	}
 
-	anelAtual, encontrado := s.store.BuscarPorID(id)
+	anelAtual, encontrado := s.anelStore.BuscarPorID(id)
 	if !encontrado {
 		return models.Anel{}, ErrNomeNaoEncontrado
 	}
@@ -92,14 +90,14 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 
 	if dadosNovos.Ativo {
 		// Desativa todos os outros aneis antes de ativar o novo
-		err := s.store.DesativarTodos()
+		err := s.anelStore.DesativarTodos()
 		if err != nil {
 			return models.Anel{}, err
 		}
 
 	}
 
-	anel, encontrado := s.store.AtualizarAtivo(id, dadosNovos)
+	anel, encontrado := s.anelStore.AtualizarAtivo(id, dadosNovos)
 	if !encontrado {
 		return models.Anel{}, ErrNomeNaoEncontrado
 	}
@@ -108,5 +106,48 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 }
 
 func (s *AnelService) BuscarPorID(id string) (models.Anel, bool) {
-	return s.store.BuscarPorID(id)
+	return s.anelStore.BuscarPorID(id)
+}
+
+func (s *AnelService) Remover(id string) error {
+	anelRemovido, encontrado := s.anelStore.BuscarPorID(id)
+	if !encontrado {
+		return ErrNomeNaoEncontrado
+	}
+
+	// Verifica se existem leques abertos associados a esse anel
+	leques, err := s.lequeStore.ListarPorAnel(id)
+	if err != nil {
+		return err
+	}
+	for _, leque := range leques {
+		if leque.Status == "aberto" {
+			return ErrLequeAbertoNoAnel
+		}
+	}
+
+	// Remove o anel
+	removido := s.anelStore.Remover(id)
+	if anelRemovido.Ativo && removido {
+		//ativa o proximo anel da lista, se houver
+		todos, err := s.anelStore.ListarTodos()
+		if err != nil {
+			return err
+		}
+		if len(todos) == 0 {
+			return nil // Nenhum anel restante para ativar
+		}
+		if len(todos) > 0 {
+			// Ativa o primeiro anel da lista
+			anelASerAtivado := todos[0]
+			s.anelStore.AtualizarAtivo(anelASerAtivado.ID, models.Anel{Nome: anelASerAtivado.Nome, Ativo: true})
+		}
+
+	}
+
+	if !removido {
+		return ErrNomeNaoEncontrado
+	}
+
+	return nil
 }

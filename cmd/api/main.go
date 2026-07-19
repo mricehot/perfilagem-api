@@ -27,9 +27,8 @@ func main() {
 	log.Println("Conexão com o banco de dados estabelecida com sucesso!")
 
 	anelStore := store.NewAnelStore(gormDB)
-	anelService := service.NewAnelService(anelStore)
-
 	lequeStore := store.NewLequeStore(gormDB)
+	anelService := service.NewAnelService(anelStore, lequeStore)
 	lequeService := service.NewLequeService(lequeStore, anelStore)
 
 	services := routes.Services(routes.Services{
