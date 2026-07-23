@@ -73,15 +73,14 @@ func (s *AnelService) Atualizar(id string, dadosNovos models.Anel) (models.Anel,
 	if err != nil {
 		return models.Anel{}, err
 	}
+	anelAtual, encontrado := s.anelStore.BuscarPorID(id)
+	if !encontrado {
+		return models.Anel{}, ErrNomeNaoEncontrado
+	}
 	for _, existente := range todos {
 		if strings.EqualFold(existente.Nome, dadosNovos.Nome) && existente.ID != id {
 			return models.Anel{}, ErrNomeDuplicado
 		}
-	}
-
-	anelAtual, encontrado := s.anelStore.BuscarPorID(id)
-	if !encontrado {
-		return models.Anel{}, ErrNomeNaoEncontrado
 	}
 
 	if anelAtual.Ativo && !dadosNovos.Ativo {
