@@ -28,12 +28,15 @@ func main() {
 
 	anelStore := store.NewAnelStore(gormDB)
 	lequeStore := store.NewLequeStore(gormDB)
+	furoStore := store.NewFuroStore(gormDB)
 	anelService := service.NewAnelService(anelStore, lequeStore)
 	lequeService := service.NewLequeService(lequeStore, anelStore)
+	furoService := service.NewFuroService(furoStore, lequeStore)
 
 	services := routes.Services(routes.Services{
 		AnelService:  anelService,
 		LequeService: lequeService,
+		FuroService:  furoService,
 	})
 	mux := routes.NovoRouter(&services)
 

@@ -8,6 +8,7 @@ import (
 type Services struct {
 	AnelService  *service.AnelService
 	LequeService *service.LequeService
+	FuroService  *service.FuroService
 }
 
 func NovoRouter(svcs *Services) *http.ServeMux {
@@ -19,5 +20,6 @@ func NovoRouter(svcs *Services) *http.ServeMux {
 
 	RegistrarRotasAnel(mux, svcs.AnelService)
 	RegistrarRotasLeque(mux, svcs.LequeService)
+	RegistrarRotasFuros(mux, svcs.FuroService)
 	return mux
 }
