@@ -52,6 +52,10 @@ func (s *LequeService) Criar(leque models.Leque) (models.Leque, error) {
 	leque.ID = uuid.NewString()
 	leque.Status = "aberto"
 
+	if leque.Orientacao == "" {
+		leque.Orientacao = "descendente"
+	}
+
 	if err := s.store.Criar(leque); err != nil {
 		return models.Leque{}, err
 	}

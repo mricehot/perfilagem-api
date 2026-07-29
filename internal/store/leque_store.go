@@ -83,6 +83,9 @@ func (s *LequeStore) Atualizar(id string, dadosNovos models.Leque) (models.Leque
 	lequeExistente.Numero = dadosNovos.Numero
 	lequeExistente.Nome = dadosNovos.Nome
 	lequeExistente.Status = dadosNovos.Status
+	lequeExistente.TurnoNumero = dadosNovos.TurnoNumero
+	lequeExistente.TurnoLetra = dadosNovos.TurnoLetra
+	lequeExistente.Orientacao = dadosNovos.Orientacao
 	err := s.db.Save(&lequeExistente).Error
 	if err != nil {
 		return models.Leque{}, fmt.Errorf("erro ao atualizar leque: %w", err)
